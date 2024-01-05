@@ -1,26 +1,26 @@
 {
-	"id": "your-module-name",
-	"name": "your-module-name",
-	"shortname": "module-shortname",
-	"description": "A short one line description of your module",
+	"id": "resolume-ws",
+	"name": "resolume-ws",
+	"shortname": "resolume_ws",
+	"description": "Communicate with Resolume over WebSockets",
 	"version": "0.0.0",
 	"license": "MIT",
-	"repository": "git+https://github.com/bitfocus/companion-module-your-module-name.git",
-	"bugs": "https://github.com/bitfocus/companion-module-your-module-name/issues",
+	"repository": "git+https://github.com/bitfocus/companion-module-resolume-ws.git",
+	"bugs": "https://github.com/bitfocus/companion-module-resolume-ws/issues",
 	"maintainers": [
 		{
-			"name": "Your name",
-			"email": "Your email"
+			"name": "Mendel Greenberg",
+			"email": "mendel@chabad360.me"
 		}
 	],
 	"runtime": {
 		"type": "node18",
 		"api": "nodejs-ipc",
 		"apiVersion": "0.0.0",
-		"entrypoint": "../main.js"
+		"entrypoint": "../dist/index.js"
 	},
 	"legacyIds": [],
-	"manufacturer": "Your company",
-	"products": ["Your product"],
-	"keywords": []
+	"manufacturer": "Resolume",
+	"products": ["Arena (WebSockets)", "Avenue (WebSockets)"],
+	"keywords": ["resolume", "arena", "avenue", "websockets"]
 }
