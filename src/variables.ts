@@ -14,7 +14,7 @@ interface ResolumeVariableDefinition extends CompanionVariableDefinition {
     useFormat?: <T>(value: any) => T
     callback?: (value: any) => void
     ignore?: boolean
-    initial?: number | string | boolean
+    initial?: CompanionVariableValue
 }
 
 class ManyToOneMap{
@@ -67,6 +67,10 @@ class ManyToOneMap{
         }
 
         return variables;
+    }
+
+    public getVariable(variable: string): ResolumeVariableDefinition | undefined {
+        return this.variableMap.get(variable);
     }
 
     public delete(variable: ResolumeVariableDefinition | string): string | undefined {
@@ -125,57 +129,53 @@ export class Variables {
 
         if (data.valuetype === "ParamChoice") {
             for (const variable of variables) {
-                this.newVariables = {...this.newVariables,
-                    [variable.variableId + "_text"]: data.value,
-                    [variable.variableId]: data.index,
-                };
+                this.newVariables[variable.variableId + "_text"] = data.value;
+                this.newVariables[variable.variableId] = data.index;
                 if (variable.callback) {
                     variable.callback(data.index);
                 }
                 if (variable.useFormat) {
-                    this.newVariables = {...this.newVariables,
-                        [variable.variableId]: variable.useFormat(data.index),
-                    };
+                    this.newVariables[variable.variableId] = variable.useFormat(data.index);
                 }
             }
         } else if (data.valuetype === "ParamRange") {
             for (const variable of variables) {
-                this.newVariables = {...this.newVariables,
-                    [variable.variableId + "_min"]: data.min,
-                    [variable.variableId + "_max"]: data.max,
-                    [variable.variableId]: data.value,
-                };
+                this.newVariables[variable.variableId + "_min"] = data.min;
+                this.newVariables[variable.variableId + "_max"] = data.max;
+                this.newVariables[variable.variableId] = data.value;
                 if (variable.callback) {
                     variable.callback(data.value);
                 }
                 if (variable.useFormat) {
-                    this.newVariables = {...this.newVariables,
-                        [variable.variableId]: variable.useFormat(data.value),
-                        [variable.variableId + "_min"]: variable.useFormat(data.min),
-                        [variable.variableId + "_max"]: variable.useFormat(data.max),
-                    };
+                    this.newVariables[variable.variableId] = variable.useFormat(data.value);
+                    this.newVariables[variable.variableId + "_min"] = variable.useFormat(data.min);
+                    this.newVariables[variable.variableId + "_max"] = variable.useFormat(data.max);
                 }
             }
 
         } else {
             for (const variable of variables) {
-                this.newVariables = {...this.newVariables,
-                    [variable.variableId]: data.value,
-                };
+                this.newVariables[variable.variableId] = data.value;
                 if (variable.callback) {
                     variable.callback(data.value);
                 }
                 if (variable.useFormat) {
-                    this.newVariables = {...this.newVariables,
-                        [variable.variableId]: variable.useFormat(data.value),
-                    };
+                    this.newVariables[variable.variableId] = variable.useFormat(data.value);
                 }
 
             }
         }
 
-        this.Set();
+        for (const variable of variables) {
+            if (variable.source) {
+                variable.source.value = data.value;
+                if (data.valuetype === "ParamChoice" && variable.source.valuetype === "ParamChoice") {
+                    variable.source.index = data.index;
+                }
+            }
+        }
 
+        this.Set();
     }
 
     private readonly set = (): void => {
@@ -188,7 +188,7 @@ export class Variables {
             if (this.currentVariables[name] !== variables[name]) changes[name] = variables[name];
         }
 
-        this.currentVariables = {...this.currentVariables, ...variables};
+        this.currentVariables = {...this.currentVariables, ...changes};
         this.instance.log('debug', 'Variables updated' + JSON.stringify(changes));
         this.instance.setVariableValues(changes);
     }
@@ -203,17 +203,27 @@ export class Variables {
                 return;
             }
             if (!selected) {
+                if (this.instance.selectedClipColumn === column && this.instance.selectedClipLayer === layer) {
+                    this.instance.selectedClipColumn = null;
+                    this.instance.selectedClipLayer = null;
+
+                    this.newVariables[`selected_clip_layer`] = undefined;
+                    this.newVariables[`selected_clip_column`] = undefined;
+                    this.newVariables[`selected_clip_id`] = undefined;
+                }
                 return;
             }
 
             // @ts-ignore
             clip.selected.value = true;
 
-            this.newVariables = {...this.newVariables,
-                [`selected_clip_layer`]: layer,
-                [`selected_clip_column`]: column,
-                [`selected_clip_id`]: clip.id,
-            }
+            this.instance.selectedClipColumn = column;
+            this.instance.selectedClipLayer = layer;
+
+            this.newVariables[`selected_clip_layer`] = layer;
+            this.newVariables[`selected_clip_column`] = column;
+            this.newVariables[`selected_clip_id`] = clip.id;
+
 
             const newDefinitions: ResolumeVariableDefinition[] = []
 
@@ -252,11 +262,8 @@ export class Variables {
                 }
             } else {
                 newDefinitions.push({ variableId: `selected_clip_transport_playdirection`, name: `Selected Clip Play Direction`});
-                newDefinitions.push({ variableId: `selected_clip_transport_playdirection_text`, name: `Selected Clip Play Direction (text)`});
                 newDefinitions.push({ variableId: `selected_clip_transport_playmode`, name: `Selected Clip Play Mode`});
-                newDefinitions.push({ variableId: `selected_clip_transport_playmode_text`, name: `Selected Clip Play Mode (text)`});
                 newDefinitions.push({ variableId: `selected_clip_transport_playmodeaway`, name: `Selected Clip Play Mode Away`});
-                newDefinitions.push({ variableId: `selected_clip_transport_playmodeaway_text`, name: `Selected Clip Play Mode Away (text)`});
                 newDefinitions.push({ variableId: `selected_clip_transport_duration`, name: `Selected Clip Duration`});
                 newDefinitions.push({ variableId: `selected_clip_transport_duration_time`, name: `Selected Clip Duration (time)`});
             }
@@ -272,16 +279,21 @@ export class Variables {
                 return;
             }
             if (!selected) {
+                if (this.instance.selectedLayer === layerIdx) {
+                    this.instance.selectedLayer = null;
+
+                    this.newVariables[`selected_layer`] = undefined;
+                    this.newVariables[`selected_layer_id`] = undefined;
+                }
                 return;
             }
 
             // @ts-ignore
             layer.selected.value = true;
 
-            this.newVariables = {...this.newVariables,
-                [`selected_layer`]: layerIdx,
-                [`selected_layer_id`]: layer.id,
-            }
+            this.instance.selectedLayer = layerIdx;
+            this.newVariables[`selected_layer`] = layerIdx;
+            this.newVariables[`selected_layer_id`] = layer.id;
         }
     }
 
@@ -395,10 +407,26 @@ export class Variables {
             })
 
             const newVariables = difference(expandedVariables, this.definitionMap.getAll());
+            const removedVariables = difference(this.definitionMap.getAllVariables(), expandedVariables.map((variable) => variable.variableId));
             if (!partial) {
-                const removedVariables = difference(this.definitionMap.getAllVariables(), expandedVariables.map((variable) => variable.variableId));
                 for (const variable of removedVariables) {
-                    // @ts-ignore
+                    const v = this.definitionMap.getVariable(variable);
+                    if (v !== undefined) {
+                        if (v.source) {
+                            if (v.source.valuetype === "ParamChoice") {
+                                this.newVariables[variable + "_text"] = undefined;
+                                this.definitionMap.delete(variable + "_text");
+                            }
+                            if (v.source.valuetype === "ParamRange") {
+                                this.newVariables[variable + "_min"] = undefined;
+                                this.newVariables[variable + "_max"] = undefined;
+
+                                this.definitionMap.delete(variable + "_min");
+                                this.definitionMap.delete(variable + "_max");
+                            }
+                        }
+                    }
+
                     const deleted =  this.definitionMap.delete(variable);
                     if (deleted) {
                         this.instance.resolume?.ws?.unsubscribe(paramToString(deleted));
@@ -429,11 +457,18 @@ export class Variables {
                 } else {
                     variable.parameter = 0;
                     this.definitionMap.add(variable);
-                    this.newVariables = {...this.newVariables,
-                        [variable.variableId]: variable.initial ?? undefined,
-                    };
                 }
             }
+
+            for (const variable of this.definitionMap.getAll()) {
+                if (newVariables.findIndex((v) => variable.variableId.includes(v.variableId)) > -1) {
+                    if (variable.parameter === 0 || variable.parameter === undefined) {
+                        this.newVariables[variable.variableId] = variable.initial ?? undefined;
+                    }
+                }
+            }
+
+            this.Set();
 
             this.instance.resolume?.ws?.onAll(this.onMessage);
             this.instance.setVariableDefinitions(this.definitionMap.getAll().filter((variable) => (variable.parameter !== undefined || variable.source !== undefined) && !variable.ignore));

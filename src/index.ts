@@ -18,6 +18,9 @@ class ResolumeInstance extends InstanceBase<Config> {
     public resolume: Resolume | null = null;
 
     public composition: Composition | null = null;
+    public selectedClipColumn: number | null = null;
+    public selectedClipLayer: number | null = null;
+    public selectedLayer: number | null = null;
 
     public variables: Variables | null = null;
 

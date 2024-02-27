@@ -41,11 +41,11 @@ export class Resolume {
             this.instance.updateStatus(InstanceStatus.Disconnected);
         }
         this.ws.ws.onerror = (err) => {
-            this.instance.log('error', 'Error connecting to Resolume: ' + err);
+            console.log('error', 'Error connecting to Resolume:',err);
             this.instance.updateStatus(InstanceStatus.ConnectionFailure);
             setTimeout(() => {
                 this.init();
-            }, 500);
+            }, 5000);
         }
 
 
