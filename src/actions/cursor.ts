@@ -139,6 +139,35 @@ export function getCursorActions(instance: ResolumeInstance): CompanionActionDef
             options: [],
             callback: (action, context) => clearClip(action, context, instance, instance.selectedClipLayer, instance.selectedClipColumn)
         },
+
+        "connect-column": {
+            name: "Connect Column",
+            options: [
+                {
+                    type: "textinput",
+                    label: "Column",
+                    id: "column",
+                    regex: NumberOrVariable,
+                    useVariables: true,
+                }
+            ],
+            callback: (action, context) => connectColumn(action, context, instance)
+        },
+        "connect-current-column": {
+            name: "Reconnect Current Column",
+            options: [],
+            callback: (action, context) => connectColumn(action, context, instance, instance.connectedColumn)
+        },
+        "connect-next-column": {
+            name: "Connect Next Column",
+            options: [],
+            callback: (action, context) => connectColumn(action, context, instance, (instance.connectedColumn ?? 0) + 1)
+        },
+        "connect-previous-column": {
+            name: "Connect Previous Column",
+            options: [],
+            callback: (action, context) => connectColumn(action, context, instance, (instance.connectedColumn ?? 0) - 1)
+        }
     }
 }
 
@@ -223,6 +252,24 @@ export const selectLayer = async (action: CompanionActionEvent, context: Compani
         return instance.resolume.send({
             action: ActionType.Trigger,
             parameter: `/composition/layers/${layer}/select`,
+        });
+    }
+}
+
+export const connectColumn = async (action: CompanionActionEvent, context: CompanionActionContext, instance: ResolumeInstance, c?: number | null) => {
+    let column = c ?? parseInt(await context.parseVariablesInString(<string>action.options.column)) - 1;
+
+    if (instance.resolume) {
+        instance.resolume.send({
+            action: ActionType.Trigger,
+            parameter: `/composition/columns/${column + 1}/connect`,
+            value: true,
+        });
+
+        return instance.resolume.send({
+            action: ActionType.Trigger,
+            parameter: `/composition/columns/${column + 1}/connect`,
+            value: false,
         });
     }
 }
