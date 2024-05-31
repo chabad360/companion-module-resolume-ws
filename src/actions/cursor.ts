@@ -9,30 +9,41 @@ export function getCursorActions(instance: ResolumeInstance): CompanionActionDef
             name: "Clear Layer",
             options: [
                 {
+                    type: "checkbox",
+                    label: "Selected Layer",
+                    id: "selected",
+                    default: false,
+                },
+                {
                     type: "textinput",
                     label: "Layer",
                     id: "layer",
                     regex: NumberOrVariable,
                     useVariables: true,
+                    isVisible: (options) => !options.selected,
                 }
             ],
-            callback: (action, context) => clearLayer(action, context, instance)
-        },
-        "clear-selected-layer": {
-            name: "Clear Selected Layer",
-            options: [],
-            callback: (action, context) => clearLayer(action, context, instance, instance.selectedLayer)
+            callback: (action, context) => action.options.selected ?
+                clearLayer(action, context, instance, instance.selectedLayer) :
+                clearLayer(action, context, instance)
         },
 
         "clear-clip-layer": {
             name: "Clear Layer for Clip (if playing)",
             options: [
                 {
+                    type: "checkbox",
+                    label: "Selected Clip",
+                    id: "selected",
+                    default: false,
+                },
+                {
                     type: "textinput",
                     label: "Clip Layer",
                     id: "layer",
                     regex: NumberOrVariable,
                     useVariables: true,
+                    isVisible: (options) => !options.selected,
                 },
                 {
                     type: "textinput",
@@ -40,14 +51,12 @@ export function getCursorActions(instance: ResolumeInstance): CompanionActionDef
                     id: "column",
                     regex: NumberOrVariable,
                     useVariables: true,
+                    isVisible: (options) => !options.selected,
                 },
             ],
-            callback: (action, context) => clearClipLayer(action, context, instance)
-        },
-        "clear-selected-clip-layer": {
-            name: "Clear Layer for Selected Clip (if playing)",
-            options: [],
-            callback: (action, context) => clearClipLayer(action, context, instance, instance.selectedClipLayer, instance.selectedClipColumn)
+            callback: (action, context) => action.options.selected ?
+                clearClipLayer(action, context, instance, instance.selectedClipLayer, instance.selectedClipColumn) :
+                clearClipLayer(action, context, instance)
         },
 
         "select-layer": {
@@ -92,11 +101,18 @@ export function getCursorActions(instance: ResolumeInstance): CompanionActionDef
             name: "Connect Clip",
             options: [
                 {
+                    type: "checkbox",
+                    label: "Selected Clip",
+                    id: "selected",
+                    default: false,
+                },
+                {
                     type: "textinput",
                     label: "Clip Layer",
                     id: "layer",
                     regex: NumberOrVariable,
                     useVariables: true,
+                    isVisible: (options) => !options.selected,
                 },
                 {
                     type: "textinput",
@@ -104,25 +120,30 @@ export function getCursorActions(instance: ResolumeInstance): CompanionActionDef
                     id: "column",
                     regex: NumberOrVariable,
                     useVariables: true,
+                    isVisible: (options) => !options.selected,
                 },
             ],
-            callback: (action, context) => connectClip(action, context, instance)
-        },
-        "connect-selected-clip": {
-            name: "Connect Selected Clip",
-            options: [],
-            callback: (action, context) => connectClip(action, context, instance, instance.selectedClipLayer, instance.selectedClipColumn)
+            callback: (action, context) => action.options.selected ?
+                connectClip(action, context, instance, instance.selectedClipLayer, instance.selectedClipColumn) :
+                connectClip(action, context, instance)
         },
 
         "clear-clip": {
             name: "Clear Clip",
             options: [
                 {
+                    type: "checkbox",
+                    label: "Selected Clip",
+                    id: "selected",
+                    default: false,
+                },
+                {
                     type: "textinput",
                     label: "Clip Layer",
                     id: "layer",
                     regex: NumberOrVariable,
                     useVariables: true,
+                    isVisible: (options) => !options.selected,
                 },
                 {
                     type: "textinput",
@@ -130,14 +151,12 @@ export function getCursorActions(instance: ResolumeInstance): CompanionActionDef
                     id: "column",
                     regex: NumberOrVariable,
                     useVariables: true,
+                    isVisible: (options) => !options.selected,
                 },
             ],
-            callback: (action, context) => clearClip(action, context, instance)
-        },
-        "clear-selected-clip": {
-            name: "Clear Selected Clip",
-            options: [],
-            callback: (action, context) => clearClip(action, context, instance, instance.selectedClipLayer, instance.selectedClipColumn)
+            callback: (action, context) => action.options.selected ?
+                clearClip(action, context, instance, instance.selectedClipLayer, instance.selectedClipColumn) :
+                clearClip(action, context, instance)
         },
 
         "connect-column": {

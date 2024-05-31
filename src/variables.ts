@@ -423,9 +423,9 @@ export class Variables {
         // @ts-ignore
         variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_selected`, name: `Layer ${idxStr} Clip ${clipIdxStr} Selected`, source: clip.selected, callback: this.selectedClip(index, clipIndex) })
         // @ts-ignore
-        variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_connected`, name: `Layer ${idxStr} Clip ${clipIdxStr} Connected`, source: clip.connected, useIndex: true })
+        variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_connected`, name: `Layer ${idxStr} Clip ${clipIdxStr} Connected`, source: clip.connected })
         // @ts-ignore
-        variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_ignorecolumntrigger`, name: `Layer ${idxStr} Clip ${clipIdxStr} Ignore Column Trigger`, source: clip.ignorecolumntrigger, useIndex: true })
+        variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_ignorecolumntrigger`, name: `Layer ${idxStr} Clip ${clipIdxStr} Ignore Column Trigger`, source: clip.ignorecolumntrigger})
         if (clip.transport?.position) {
             // @ts-ignore
             variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_transport_position`, name: `Layer ${idxStr} Clip ${clipIdxStr} Play Head`, source: clip.transport.position })
@@ -434,17 +434,43 @@ export class Variables {
         }
         if (clip.transport?.controls) {
             // @ts-ignore
-            variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_transport_playdirection`, name: `Layer ${idxStr} Clip ${clipIdxStr} Play Direction`, source: clip.transport.controls.playdirection, useIndex: true })
+            variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_transport_playdirection`, name: `Layer ${idxStr} Clip ${clipIdxStr} Play Direction`, source: clip.transport.controls.playdirection })
             // @ts-ignore
-            variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_transport_playmode`, name: `Layer ${idxStr} Clip ${clipIdxStr} Play Mode`, source: clip.transport.controls.playmode, useIndex: true })
+            variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_transport_playmode`, name: `Layer ${idxStr} Clip ${clipIdxStr} Play Mode`, source: clip.transport.controls.playmode })
             // @ts-ignore
-            variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_transport_playmodeaway`, name: `Layer ${idxStr} Clip ${clipIdxStr} Play Mode Away`, source: clip.transport.controls.playmodeaway, useIndex: true })
+            variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_transport_playmodeaway`, name: `Layer ${idxStr} Clip ${clipIdxStr} Play Mode Away`, source: clip.transport.controls.playmodeaway })
             if (clip.transport?.controls?.duration) {
                 // @ts-ignore
                 variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_transport_duration`, name: `Layer ${idxStr} Clip ${clipIdxStr} Duration`, source: clip.transport.controls.duration })
                 // @ts-ignore
                 variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_transport_duration_time`, name: `Layer ${idxStr} Clip ${clipIdxStr} Duration (time)`, source: clip.transport.controls.duration, useFormat: (value: number) => {return msToTime(value*1000)}})
             }
+        }
+        if (clip.video) {
+            // @ts-ignore
+            variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_video_width`, name: `Layer ${idxStr} Clip ${clipIdxStr} Width`, source: clip.video.width })
+            // @ts-ignore
+            variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_video_height`, name: `Layer ${idxStr} Clip ${clipIdxStr} Height`, source: clip.video.height })
+            // @ts-ignore
+            variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_video_opacity`, name: `Layer ${idxStr} Clip ${clipIdxStr} Opacity`, source: clip.video.opacity })
+            // @ts-ignore
+            variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_video_blend_mode`, name: `Layer ${idxStr} Clip ${clipIdxStr} Blend Mode`, source: clip.video.mixer["Blend Mode"] })
+            // @ts-ignore
+            variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_video_resize`, name: `Layer ${idxStr} Clip ${clipIdxStr} Resize`, source: clip.video.resize })
+            // @ts-ignore
+            variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_video_description`, name: `Layer ${idxStr} Clip ${clipIdxStr} Description`, initial: clip.video.description })
+            // @ts-ignore
+            variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_video_fileinfo`, name: `Layer ${idxStr} Clip ${clipIdxStr} File Info`, initial: clip.video.fileinfo })
+        }
+        if (clip.audio) {
+            // @ts-ignore
+            variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_audio_volume`, name: `Layer ${idxStr} Clip ${clipIdxStr} Audio Volume`, source: clip.audio.volume })
+            // @ts-ignore
+            variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_audio_pan`, name: `Layer ${idxStr} Clip ${clipIdxStr} Audio Pan`, source: clip.audio.pan })
+            // @ts-ignore
+            variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_audio_description`, name: `Layer ${idxStr} Clip ${clipIdxStr} Audio Description`, initial: clip.audio.description })
+            // @ts-ignore
+            variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_audio_fileinfo`, name: `Layer ${idxStr} Clip ${clipIdxStr} Audio File Info`, initial: clip.audio.fileinfo })
         }
     }
 
