@@ -1,6 +1,6 @@
 import {InstanceBase, runEntrypoint, SomeCompanionConfigField} from "@companion-module/base";
 import {Config, getConfigFields} from "./config";
-import {getActions} from "./actions";
+import {getActions} from "./actions/actions";
 import {Resolume} from "./resolume";
 import {Composition} from "resolume/ws";
 import {Variables} from "./variables";
