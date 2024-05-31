@@ -21,6 +21,6 @@
 	},
 	"legacyIds": [],
 	"manufacturer": "Resolume",
-	"products": ["Arena (WebSockets)", "Avenue (WebSockets)"],
-	"keywords": ["resolume", "arena", "avenue", "websockets"]
+	"products": ["Arena (WebSockets)"],
+	"keywords": ["resolume", "arena", "websockets"]
 }

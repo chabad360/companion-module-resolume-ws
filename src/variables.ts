@@ -1,8 +1,9 @@
 import {CompanionVariableDefinition, CompanionVariableValue} from "@companion-module/base";
 import ResolumeInstance from "./index";
 import {difference, isEqual, throttle} from 'lodash';
-import {Composition, MessageType, Parameter, ParameterMessage} from "resolume/ws";
-import {paramToString} from "resolume/resolume";
+import {MessageType, Parameter, ParameterMessage} from "resolume/ws";
+import {Clip, Column, paramToString} from "resolume/resolume";
+import {Composition, Layer} from "resolume/resolume";
 
 interface InstanceVariableValue {
     [key: string]: string | number | boolean | Record<string, never> | undefined
@@ -17,13 +18,15 @@ interface ResolumeVariableDefinition extends CompanionVariableDefinition {
     initial?: CompanionVariableValue
 }
 
+type ResolumeVariableDefinitions = ResolumeVariableDefinition[];
+
 class ManyToOneMap{
     private MasterMap: Map<string, Set<string>> = new Map();
     private SlaveMap: Map<string, string> = new Map();
     private variableMap: Map<string, ResolumeVariableDefinition> = new Map();
 
     public add(variable: ResolumeVariableDefinition): string | undefined {
-        const master = variable.parameter?.toString() ?? variable.source?.id.toString();
+        const master = variable.parameter?.toString() ?? variable.source?.id.toString() ?? variable.initial?.toString();
         const slave = variable.variableId;
 
         if (!master) {
@@ -198,6 +201,7 @@ export class Variables {
     public readonly Set = throttle(this.set, 100)
 
     public newVariables: InstanceVariableValue = {}
+
     private readonly selectedClip = (layer: number, column: number): (value: boolean) => void  => {
         return (selected) => {
             const clip = this.instance.composition?.layers?.[layer]?.clips?.[column];
@@ -299,15 +303,43 @@ export class Variables {
         }
     }
 
+    private readonly connectedColumn = (columnIdx: number): (value: boolean) => void  => {
+        return (connected) => {
+            const column = this.instance.composition?.columns?.[columnIdx];
+            if (!column) {
+                return;
+            }
+
+            if (!connected) {
+                if (this.instance.connectedColumn === columnIdx) {
+                    this.instance.connectedColumn = null;
+
+                    this.newVariables[`connected_column`] = undefined;
+                    this.newVariables[`connected_column_id`] = undefined;
+                }
+                return;
+            }
+
+            // @ts-ignore
+            column.connected.value = true;
+
+            this.instance.connectedColumn = columnIdx
+            this.newVariables[`connected_column`] = columnIdx+1;
+            this.newVariables[`connected_column_id`] = column.id;
+        }
+    }
+
     public readonly updateDefinitions = async (): Promise<void> => {
         if (!this.instance.connected) return
         const composition = this.instance.composition as Composition
         // @ts-ignore
-        const variables: ResolumeVariableDefinition[] = [
+        const variables: ResolumeVariableDefinitions = [
             {variableId: 'selected_clip_column', name: 'Selected Clip Column'},
             {variableId: 'selected_clip_layer', name: 'Selected Clip Layer'},
             {variableId: 'selected_layer', name: 'Selected Layer'},
             {variableId: 'selected_layer_id', name: 'Selected Layer ID'},
+            {variableId: 'connected_column', name: 'Connected Column'},
+            {variableId: 'connected_column_id', name: 'Connected Column ID'},
             // @ts-ignore
             { variableId: 'composition_name', name: 'Composition Name', source: composition.name },
             // @ts-ignore
@@ -323,94 +355,124 @@ export class Variables {
         ];
 
         // Layers
-        composition.layers?.forEach((layer, index) => {
-            const idxStr = (index + 1).toString();
-            variables.push({ variableId: `layer_${idxStr}_id`, name: `Layer ${idxStr} ID`, parameter: layer.id as number, initial: layer.id })
-            // @ts-ignore
-            variables.push({ variableId: `layer_${idxStr}_name`, name: `Layer ${idxStr} Name`, source: layer.name })
-            // @ts-ignore
-            variables.push({ variableId: `layer_${idxStr}_selected`, name: `Layer ${idxStr} Selected`, source: layer.selected, callback: this.selectedLayer(index) })
-            // @ts-ignore
-            variables.push({ variableId: `layer_${idxStr}_bypassed`, name: `Layer ${idxStr} Bypassed`, source: layer.bypassed })
-            // @ts-ignore
-            variables.push({ variableId: `layer_${idxStr}_solo`, name: `Layer ${idxStr} Solo`, source: layer.solo })
-            // @ts-ignore
-            variables.push({ variableId: `layer_${idxStr}_master`, name: `Layer ${idxStr} Master`, source: layer.master })
-            // @ts-ignore
-            variables.push({ variableId: `layer_${idxStr}_ignorecolumntrigger`, name: `Layer ${idxStr} Ignore Column Trigger`, source: layer.ignorecolumntrigger })
-            // @ts-ignore
-            variables.push({ variableId: `layer_${idxStr}_audio_volume`, name: `Layer ${idxStr} Audio Volume`, source: layer.audio.volume })
-            // @ts-ignore
-            variables.push({ variableId: `layer_${idxStr}_audio_pan`, name: `Layer ${idxStr} Audio Pan`, source: layer.audio.pan })
-            // @ts-ignore
-            variables.push({ variableId: `layer_${idxStr}_video_blend_mode`, name: `Layer ${idxStr} Blend Mode`, source: layer.video.mixer["Blend Mode"]})
-            // @ts-ignore
-            variables.push({ variableId: `layer_${idxStr}_video_opacity`, name: `Layer ${idxStr} Opacity`, source: layer.video.opacity })
-            // @ts-ignore
-            variables.push({ variableId: `layer_${idxStr}_video_autosize`, name: `Layer ${idxStr} Autosize`, source: layer.video.autosize})
-            // @ts-ignore
-            variables.push({ variableId: `layer_${idxStr}_transition_duration`, name: `Layer ${idxStr} Transition Duration`, source: layer.transition.duration })
-            // @ts-ignore
-            variables.push({ variableId: `layer_${idxStr}_transition_blend_mode`, name: `Layer ${idxStr} Transition Blend Mode`, source: layer.transition.blend_mode})
+        if (composition.layers) {
+            for (const [index, layer] of composition.layers?.entries()) {
+                this.updateLayerVariableDefinitions(layer, index, variables);
 
-            // Clips
-            layer.clips?.forEach((clip, clipIndex) => {
-                const clipIdxStr = (clipIndex + 1).toString();
-                if (clip.connected?.index === 0) {
-                    // @ts-ignore
-                    variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_selected`, name: `Layer ${idxStr} Clip ${clipIdxStr} Selected`, parameter: clip.selected.id as number, callback: this.selectedClip(index, clipIndex), ignore: true });
-                    return;
-                }
-                variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_id`, name: `Layer ${idxStr} Clip ${clipIdxStr} ID`, parameter: clip.id as number, initial: clip.id })
-                // @ts-ignore
-                variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_name`, name: `Layer ${idxStr} Clip ${clipIdxStr} Name`, source: clip.name })
-                // @ts-ignore
-                variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_selected`, name: `Layer ${idxStr} Clip ${clipIdxStr} Selected`, source: clip.selected, callback: this.selectedClip(index, clipIndex) })
-                // @ts-ignore
-                variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_connected`, name: `Layer ${idxStr} Clip ${clipIdxStr} Connected`, source: clip.connected, useIndex: true })
-                // @ts-ignore
-                variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_ignorecolumntrigger`, name: `Layer ${idxStr} Clip ${clipIdxStr} Ignore Column Trigger`, source: clip.ignorecolumntrigger, useIndex: true })
-                if (clip.transport?.position) {
-                    // @ts-ignore
-                    variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_transport_position`, name: `Layer ${idxStr} Clip ${clipIdxStr} Play Head`, source: clip.transport.position })
-                    // @ts-ignore
-                    variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_transport_position_time`, name: `Layer ${idxStr} Clip ${clipIdxStr} Play Head (time)`, source: clip.transport.position, useFormat: (value: number) => {return msToTime(value)}})
-                }
-                if (clip.transport?.controls) {
-                    // @ts-ignore
-                    variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_transport_playdirection`, name: `Layer ${idxStr} Clip ${clipIdxStr} Play Direction`, source: clip.transport.controls.playdirection, useIndex: true })
-                    // @ts-ignore
-                    variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_transport_playmode`, name: `Layer ${idxStr} Clip ${clipIdxStr} Play Mode`, source: clip.transport.controls.playmode, useIndex: true })
-                    // @ts-ignore
-                    variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_transport_playmodeaway`, name: `Layer ${idxStr} Clip ${clipIdxStr} Play Mode Away`, source: clip.transport.controls.playmodeaway, useIndex: true })
-                    if (clip.transport?.controls?.duration) {
-                        // @ts-ignore
-                        variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_transport_duration`, name: `Layer ${idxStr} Clip ${clipIdxStr} Duration`, source: clip.transport.controls.duration })
-                        // @ts-ignore
-                        variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_transport_duration_time`, name: `Layer ${idxStr} Clip ${clipIdxStr} Duration (time)`, source: clip.transport.controls.duration, useFormat: (value: number) => {return msToTime(value*1000)}})
+                // Clips
+                if (layer.clips) {
+                    for (const [clipIndex, clip] of layer.clips.entries()) {
+                        this.updateClipVariableDefinitions(clip, clipIndex, index, variables);
                     }
                 }
-            });
-        });
+            }
+        }
+
+        // Columns
+        if (composition.columns) {
+            for (const [index, column] of composition.columns.entries()) {
+                this.updateColumnVariableDefinitions(column, index, variables);
+            }
+        }
 
         this.refreshDefinitions(variables);
     }
 
-    refreshDefinitions(variables: ResolumeVariableDefinition[], partial?: boolean): void {
-        if (!isEqual(variables, this.definitionMap.getAll())) {
-            const expandedVariables = variables;
-            expandedVariables.forEach((variable) => {
-                if (variable.source) {
-                    if (variable.source.valuetype === "ParamChoice") {
-                        expandedVariables.push({variableId: variable.variableId + "_text", name: variable.name + " (text)"})
-                    } else if (variable.source.valuetype === "ParamRange") {
-                        expandedVariables.push({variableId: variable.variableId + "_min", name: variable.name + " (min)"})
-                        expandedVariables.push({variableId: variable.variableId + "_max", name: variable.name + " (max)"})
-                    }
-                }
-            })
+    updateLayerVariableDefinitions = (layer: Layer, index: number, variables: ResolumeVariableDefinitions): void => {
+        const idxStr = (index + 1).toString();
+        variables.push({ variableId: `layer_${idxStr}_id`, name: `Layer ${idxStr} ID`, initial: layer.id })
+        // @ts-ignore
+        variables.push({ variableId: `layer_${idxStr}_name`, name: `Layer ${idxStr} Name`, source: layer.name })
+        // @ts-ignore
+        variables.push({ variableId: `layer_${idxStr}_selected`, name: `Layer ${idxStr} Selected`, source: layer.selected, callback: this.selectedLayer(index) })
+        // @ts-ignore
+        variables.push({ variableId: `layer_${idxStr}_bypassed`, name: `Layer ${idxStr} Bypassed`, source: layer.bypassed })
+        // @ts-ignore
+        variables.push({ variableId: `layer_${idxStr}_solo`, name: `Layer ${idxStr} Solo`, source: layer.solo })
+        // @ts-ignore
+        variables.push({ variableId: `layer_${idxStr}_master`, name: `Layer ${idxStr} Master`, source: layer.master })
+        // @ts-ignore
+        variables.push({ variableId: `layer_${idxStr}_ignorecolumntrigger`, name: `Layer ${idxStr} Ignore Column Trigger`, source: layer.ignorecolumntrigger })
+        // @ts-ignore
+        variables.push({ variableId: `layer_${idxStr}_audio_volume`, name: `Layer ${idxStr} Audio Volume`, source: layer.audio.volume })
+        // @ts-ignore
+        variables.push({ variableId: `layer_${idxStr}_audio_pan`, name: `Layer ${idxStr} Audio Pan`, source: layer.audio.pan })
+        // @ts-ignore
+        variables.push({ variableId: `layer_${idxStr}_video_blend_mode`, name: `Layer ${idxStr} Blend Mode`, source: layer.video.mixer["Blend Mode"]})
+        // @ts-ignore
+        variables.push({ variableId: `layer_${idxStr}_video_opacity`, name: `Layer ${idxStr} Opacity`, source: layer.video.opacity })
+        // @ts-ignore
+        variables.push({ variableId: `layer_${idxStr}_video_autosize`, name: `Layer ${idxStr} Autosize`, source: layer.video.autosize})
+        // @ts-ignore
+        variables.push({ variableId: `layer_${idxStr}_transition_duration`, name: `Layer ${idxStr} Transition Duration`, source: layer.transition.duration })
+        // @ts-ignore
+        variables.push({ variableId: `layer_${idxStr}_transition_blend_mode`, name: `Layer ${idxStr} Transition Blend Mode`, source: layer.transition.blend_mode})
+    }
 
-            const newVariables = difference(expandedVariables, this.definitionMap.getAll());
+    updateClipVariableDefinitions = (clip: Clip, clipIndex: number, index: number, variables: ResolumeVariableDefinitions): void => {
+        const idxStr = (index + 1).toString();
+        const clipIdxStr = (clipIndex + 1).toString();
+        if (clip.connected?.index === 0) {
+            // @ts-ignore
+            variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_selected`, name: `Layer ${idxStr} Clip ${clipIdxStr} Selected`, parameter: clip.selected.id as number, callback: this.selectedClip(index, clipIndex), ignore: true });
+            return;
+        }
+        variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_id`, name: `Layer ${idxStr} Clip ${clipIdxStr} ID`, initial: clip.id })
+        // @ts-ignore
+        variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_name`, name: `Layer ${idxStr} Clip ${clipIdxStr} Name`, source: clip.name })
+        // @ts-ignore
+        variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_selected`, name: `Layer ${idxStr} Clip ${clipIdxStr} Selected`, source: clip.selected, callback: this.selectedClip(index, clipIndex) })
+        // @ts-ignore
+        variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_connected`, name: `Layer ${idxStr} Clip ${clipIdxStr} Connected`, source: clip.connected, useIndex: true })
+        // @ts-ignore
+        variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_ignorecolumntrigger`, name: `Layer ${idxStr} Clip ${clipIdxStr} Ignore Column Trigger`, source: clip.ignorecolumntrigger, useIndex: true })
+        if (clip.transport?.position) {
+            // @ts-ignore
+            variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_transport_position`, name: `Layer ${idxStr} Clip ${clipIdxStr} Play Head`, source: clip.transport.position })
+            // @ts-ignore
+            variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_transport_position_time`, name: `Layer ${idxStr} Clip ${clipIdxStr} Play Head (time)`, source: clip.transport.position, useFormat: (value: number) => {return msToTime(value)}})
+        }
+        if (clip.transport?.controls) {
+            // @ts-ignore
+            variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_transport_playdirection`, name: `Layer ${idxStr} Clip ${clipIdxStr} Play Direction`, source: clip.transport.controls.playdirection, useIndex: true })
+            // @ts-ignore
+            variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_transport_playmode`, name: `Layer ${idxStr} Clip ${clipIdxStr} Play Mode`, source: clip.transport.controls.playmode, useIndex: true })
+            // @ts-ignore
+            variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_transport_playmodeaway`, name: `Layer ${idxStr} Clip ${clipIdxStr} Play Mode Away`, source: clip.transport.controls.playmodeaway, useIndex: true })
+            if (clip.transport?.controls?.duration) {
+                // @ts-ignore
+                variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_transport_duration`, name: `Layer ${idxStr} Clip ${clipIdxStr} Duration`, source: clip.transport.controls.duration })
+                // @ts-ignore
+                variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_transport_duration_time`, name: `Layer ${idxStr} Clip ${clipIdxStr} Duration (time)`, source: clip.transport.controls.duration, useFormat: (value: number) => {return msToTime(value*1000)}})
+            }
+        }
+    }
+
+    updateColumnVariableDefinitions = (column: Column, index: number, variables: ResolumeVariableDefinitions): void => {
+        const idxStr = (index + 1).toString();
+        variables.push({ variableId: `column_${idxStr}_id`, name: `Column ${idxStr} ID`, initial: column.id })
+        // @ts-ignore
+        variables.push({ variableId: `column_${idxStr}_name`, name: `Column ${idxStr} Name`, source: column.name })
+        // @ts-ignore
+        variables.push({ variableId: `column_${idxStr}_connected`, name: `Column ${idxStr} Connected`, source: column.connected, callback: this.connectedColumn(index) })
+    }
+
+    refreshDefinitions(variables: ResolumeVariableDefinition[], partial?: boolean): void {
+        const expandedVariables = variables;
+        expandedVariables.forEach((variable) => {
+            if (variable.source) {
+                if (variable.source.valuetype === "ParamChoice") {
+                    expandedVariables.push({variableId: variable.variableId + "_text", name: variable.name + " (text)"})
+                } else if (variable.source.valuetype === "ParamRange") {
+                    expandedVariables.push({variableId: variable.variableId + "_min", name: variable.name + " (min)"})
+                    expandedVariables.push({variableId: variable.variableId + "_max", name: variable.name + " (max)"})
+                }
+            }
+        })
+
+        const oldVariables = this.definitionMap.getAll()
+        if (!isEqual(expandedVariables, oldVariables)) {
+            const newVariables = difference(expandedVariables, oldVariables);
             const removedVariables = difference(this.definitionMap.getAllVariables(), expandedVariables.map((variable) => variable.variableId));
             if (!partial) {
                 for (const variable of removedVariables) {
@@ -443,7 +505,6 @@ export class Variables {
                 if (variable.source || variable.parameter) {
                     const deleted = this.definitionMap.add(variable);
                     if (deleted) {
-                        // @ts-ignore
                         this.instance.resolume?.ws?.unsubscribe(paramToString(deleted));
                     }
 
@@ -461,7 +522,9 @@ export class Variables {
                         this.onMessage(message);
                     }
                 } else {
-                    variable.parameter = 0;
+                    if (!variable.initial) {
+                        variable.parameter = 0;
+                    }
                     this.definitionMap.add(variable);
                 }
             }
@@ -477,7 +540,7 @@ export class Variables {
             this.Set();
 
             this.instance.resolume?.ws?.onAll(this.onMessage);
-            this.instance.setVariableDefinitions(this.definitionMap.getAll().filter((variable) => (variable.parameter !== undefined || variable.source !== undefined) && !variable.ignore));
+            this.instance.setVariableDefinitions(this.definitionMap.getAll().filter((variable) => (variable.parameter !== undefined || variable.source !== undefined || variable.initial !== undefined) && !variable.ignore));
         }
     }
 }

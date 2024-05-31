@@ -1,7 +1,8 @@
 // import {WebSocket} from 'ws';
 import ResolumeInstance from "./index";
 import {WebSocketAPI} from "resolume";
-import {Action, Composition} from "resolume/ws";
+import {Action} from "resolume/ws";
+import {Composition} from "resolume/resolume";
 import {InstanceStatus} from "@companion-module/base";
 
 export class Resolume {
