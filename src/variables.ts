@@ -194,7 +194,6 @@ export class Variables {
         }
 
         this.currentVariables = {...this.currentVariables, ...changes};
-        this.instance.log('debug', 'Variables updated' + JSON.stringify(changes));
         this.instance.setVariableValues(changes);
     }
 
@@ -272,6 +271,46 @@ export class Variables {
                 newDefinitions.push({ variableId: `selected_clip_transport_playmodeaway`, name: `Selected Clip Play Mode Away`});
                 newDefinitions.push({ variableId: `selected_clip_transport_duration`, name: `Selected Clip Duration`});
                 newDefinitions.push({ variableId: `selected_clip_transport_duration_time`, name: `Selected Clip Duration (time)`});
+            }
+
+            if (clip.video) {
+                // @ts-ignore
+                newDefinitions.push({ variableId: `selected_clip_video_width`, name: `Selected Clip Width`, source: clip.video.width })
+                // @ts-ignore
+                newDefinitions.push({ variableId: `selected_clip_video_height`, name: `Selected Clip Height`, source: clip.video.height })
+                // @ts-ignore
+                newDefinitions.push({ variableId: `selected_clip_video_opacity`, name: `Selected Clip Opacity`, source: clip.video.opacity })
+                // @ts-ignore
+                newDefinitions.push({ variableId: `selected_clip_video_blend_mode`, name: `Selected Clip Blend Mode`, source: clip.video.mixer["Blend Mode"] })
+                // @ts-ignore
+                newDefinitions.push({ variableId: `selected_clip_video_resize`, name: `Selected Clip Resize`, source: clip.video.resize })
+                // @ts-ignore
+                newDefinitions.push({ variableId: `selected_clip_video_description`, name: `Selected Clip Description`, initial: clip.video.description })
+                // @ts-ignore
+                newDefinitions.push({ variableId: `selected_clip_video_fileinfo`, name: `Selected Clip File Info`, initial: JSON.stringify(clip.video.fileinfo) })
+            } else {
+                newDefinitions.push({ variableId: `selected_clip_video_width`, name: `Selected Clip Width`})
+                newDefinitions.push({ variableId: `selected_clip_video_height`, name: `Selected Clip Height`})
+                newDefinitions.push({ variableId: `selected_clip_video_opacity`, name: `Selected Clip Opacity`})
+                newDefinitions.push({ variableId: `selected_clip_video_blend_mode`, name: `Selected Clip Blend Mode`})
+                newDefinitions.push({ variableId: `selected_clip_video_resize`, name: `Selected Clip Resize`})
+                newDefinitions.push({ variableId: `selected_clip_video_description`, name: `Selected Clip Description`})
+                newDefinitions.push({ variableId: `selected_clip_video_fileinfo`, name: `Selected Clip File Info`})
+            }
+            if (clip.audio) {
+                // @ts-ignore
+                newDefinitions.push({ variableId: `selected_clip_audio_volume`, name: `Selected Clip Audio Volume`, source: clip.audio.volume })
+                // @ts-ignore
+                newDefinitions.push({ variableId: `selected_clip_audio_pan`, name: `Selected Clip Audio Pan`, source: clip.audio.pan })
+                // @ts-ignore
+                newDefinitions.push({ variableId: `selected_clip_audio_description`, name: `Selected Clip Audio Description`, initial: clip.audio.description })
+                // @ts-ignore
+                newDefinitions.push({ variableId: `selected_clip_audio_fileinfo`, name: `Selected Clip Audio File Info`, initial: JSON.stringify(clip.audio.fileinfo) })
+            } else {
+                newDefinitions.push({ variableId: `selected_clip_audio_volume`, name: `Selected Clip Audio Volume`})
+                newDefinitions.push({ variableId: `selected_clip_audio_pan`, name: `Selected Clip Audio Pan`})
+                newDefinitions.push({ variableId: `selected_clip_audio_description`, name: `Selected Clip Audio Description`})
+                newDefinitions.push({ variableId: `selected_clip_audio_fileinfo`, name: `Selected Clip Audio File Info`})
             }
 
             this.refreshDefinitions(newDefinitions, true);
@@ -460,7 +499,7 @@ export class Variables {
             // @ts-ignore
             variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_video_description`, name: `Layer ${idxStr} Clip ${clipIdxStr} Description`, initial: clip.video.description })
             // @ts-ignore
-            variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_video_fileinfo`, name: `Layer ${idxStr} Clip ${clipIdxStr} File Info`, initial: clip.video.fileinfo })
+            variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_video_fileinfo`, name: `Layer ${idxStr} Clip ${clipIdxStr} File Info`, initial: JSON.stringify(clip.video.fileinfo) })
         }
         if (clip.audio) {
             // @ts-ignore
@@ -470,7 +509,7 @@ export class Variables {
             // @ts-ignore
             variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_audio_description`, name: `Layer ${idxStr} Clip ${clipIdxStr} Audio Description`, initial: clip.audio.description })
             // @ts-ignore
-            variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_audio_fileinfo`, name: `Layer ${idxStr} Clip ${clipIdxStr} Audio File Info`, initial: clip.audio.fileinfo })
+            variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_audio_fileinfo`, name: `Layer ${idxStr} Clip ${clipIdxStr} Audio File Info`, initial: JSON.stringify(clip.audio.fileinfo) })
         }
     }
 

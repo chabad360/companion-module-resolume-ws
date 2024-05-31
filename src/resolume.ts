@@ -42,7 +42,7 @@ export class Resolume {
             this.instance.updateStatus(InstanceStatus.Disconnected);
         }
         this.ws.ws.onerror = (err) => {
-            console.log('error', 'Error connecting to Resolume:',err);
+            this.instance.log('error', `Error connecting to Resolume: ${JSON.stringify(err)}`);
             this.instance.updateStatus(InstanceStatus.ConnectionFailure);
             setTimeout(() => {
                 this.init();
@@ -55,6 +55,9 @@ export class Resolume {
             this.instance.log('info', 'Composition updated');
             this.instance.updateInstance();
         });
+        this.ws.onError((error) => {
+            this.instance.log('warn', `Error from Resolume: ${JSON.stringify(error)}`);
+        })
     }
 
     update() {
@@ -67,7 +70,7 @@ export class Resolume {
     }
 
     send(data: Action) {
-        this.instance.log('debug', 'Sending data to Resolume: ' + JSON.stringify(data));
+        // this.instance.log('debug', 'Sending data to Resolume: ' + JSON.stringify(data));
         this.ws?.send(data);
     }
 }
