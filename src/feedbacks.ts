@@ -107,7 +107,7 @@ export async function getThumbnail(instance: ResolumeInstance, feedback: Compani
         return {};
     }
 
-    // @ts-ignore
+    // @ts-ignore - thumbnail.path is not in the schema yet.
     const url = clip.thumbnail.path;
     if (!url) {
         return {};

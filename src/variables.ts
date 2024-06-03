@@ -5,8 +5,10 @@ import {MessageType, Parameter, ParameterMessage} from "resolume/ws";
 import {Clip, Column, paramToString} from "resolume/resolume";
 import {Composition, Layer} from "resolume/resolume";
 
-interface InstanceVariableValue {
-    [key: string]: string | number | boolean | Record<string, never> | undefined
+type InstanceVariableValue = CompanionVariableValue | undefined;
+
+interface InstanceVariableValues {
+    [key: string]: InstanceVariableValue
 }
 
 interface ResolumeVariableDefinition extends CompanionVariableDefinition {
@@ -158,7 +160,7 @@ export class Variables {
 
         } else {
             for (const variable of variables) {
-                this.newVariables[variable.variableId] = data.value;
+                this.newVariables[variable.variableId] = (data.value as InstanceVariableValue);
                 if (variable.callback) {
                     variable.callback(data.value);
                 }
@@ -186,7 +188,7 @@ export class Variables {
     private readonly set = (): void => {
         const variables = this.newVariables;
         this.newVariables = {};
-        const changes: { [variableId: string]: CompanionVariableValue | undefined } = {};
+        const changes: InstanceVariableValues = {};
 
         for (const name in variables) {
             // @ts-ignore
@@ -201,7 +203,7 @@ export class Variables {
 
     public readonly Set = throttle(this.set, 100)
 
-    public newVariables: InstanceVariableValue = {}
+    public newVariables: InstanceVariableValues = {}
 
     private readonly selectedClip = (layer: number, column: number): (value: boolean) => void  => {
         return (selected) => {
