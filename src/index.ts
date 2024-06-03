@@ -4,6 +4,7 @@ import {getActions} from "./actions/actions";
 import {Resolume} from "./resolume";
 import {Composition} from "resolume/resolume";
 import {Variables} from "./variables";
+import {getFeedbacks} from "./feedbacks";
 
 class ResolumeInstance extends InstanceBase<Config> {
     constructor(internal: unknown) {
@@ -18,12 +19,19 @@ class ResolumeInstance extends InstanceBase<Config> {
     public resolume: Resolume | null = null;
 
     public composition: Composition | null = null;
-    public selectedClipColumn: number | null = null;
-    public selectedClipLayer: number | null = null;
-    public selectedLayer: number | null = null;
-    public connectedColumn: number | null = null;
+
+    public selectedClipColumn: number = -1;
+    public selectedClipLayer: number = -1;
+    public selectedLayer: number = -1;
+
+    public connectedColumn: number = -1;
+    public connectedClips: (number|null)[] = [];
 
     public variables: Variables | null = null;
+
+    public selectedClipFeedbacks: string[] = [];
+    public selectedLayerFeedbacks: string[] = [];
+    public connectedClipFeedbacks: string[] = [];
 
     public async init(config:Config): Promise<void> {
         await this.configUpdated(config);
@@ -49,7 +57,9 @@ class ResolumeInstance extends InstanceBase<Config> {
     }
 
     public updateInstance() {
+        this.connectedClips.fill(null, 0, this.composition?.layers?.length ?? 0);
         this.setActionDefinitions(getActions(this));
+        this.setFeedbackDefinitions(getFeedbacks(this));
         this.variables?.updateDefinitions();
     }
 }

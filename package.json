@@ -19,6 +19,7 @@
 	"dependencies": {
 		"@companion-module/base": "~1.8.0",
 		"isomorphic-ws": "^5.0.0",
+		"jimp": "^0.22.12",
 		"lodash": "^4.17.21",
 		"resolume": "../../resolume-js/build",
 		"ws": "^8.16.0"

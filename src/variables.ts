@@ -130,7 +130,7 @@ export class Variables {
             return;
         }
 
-        if (data.valuetype === "ParamChoice") {
+        if (data.valuetype === "ParamChoice" || data.valuetype === "ParamState") {
             for (const variable of variables) {
                 this.newVariables[variable.variableId + "_text"] = data.value;
                 this.newVariables[variable.variableId] = data.index;
@@ -191,6 +191,8 @@ export class Variables {
         for (const name in variables) {
             // @ts-ignore
             if (this.currentVariables[name] !== variables[name]) changes[name] = variables[name];
+            // @ts-ignore
+            if (!this.currentVariables.hasOwnProperty(name)) changes[name] = variables[name];
         }
 
         this.currentVariables = {...this.currentVariables, ...changes};
@@ -209,8 +211,8 @@ export class Variables {
             }
             if (!selected) {
                 if (this.instance.selectedClipColumn === column && this.instance.selectedClipLayer === layer) {
-                    this.instance.selectedClipColumn = null;
-                    this.instance.selectedClipLayer = null;
+                    // this.instance.selectedClipColumn = null;
+                    // this.instance.selectedClipLayer = null;
 
                     this.newVariables[`selected_clip_layer`] = undefined;
                     this.newVariables[`selected_clip_column`] = undefined;
@@ -229,6 +231,8 @@ export class Variables {
             this.newVariables[`selected_clip_column`] = column+1;
             this.newVariables[`selected_clip_id`] = clip.id;
 
+            this.instance.log('info', `Checking feedbacks: ${JSON.stringify(this.instance.selectedClipFeedbacks)}`);
+            this.instance.checkFeedbacksById(...this.instance.selectedClipFeedbacks)
 
             const newDefinitions: ResolumeVariableDefinition[] = []
 
@@ -325,7 +329,7 @@ export class Variables {
             }
             if (!selected) {
                 if (this.instance.selectedLayer === layerIdx) {
-                    this.instance.selectedLayer = null;
+                    // this.instance.selectedLayer = null;
 
                     this.newVariables[`selected_layer`] = undefined;
                     this.newVariables[`selected_layer_id`] = undefined;
@@ -339,6 +343,7 @@ export class Variables {
             this.instance.selectedLayer = layerIdx;
             this.newVariables[`selected_layer`] = layerIdx+1;
             this.newVariables[`selected_layer_id`] = layer.id;
+            this.instance.checkFeedbacksById(...this.instance.selectedLayerFeedbacks)
         }
     }
 
@@ -351,7 +356,7 @@ export class Variables {
 
             if (!connected) {
                 if (this.instance.connectedColumn === columnIdx) {
-                    this.instance.connectedColumn = null;
+                    // this.instance.connectedColumn = null;
 
                     this.newVariables[`connected_column`] = undefined;
                     this.newVariables[`connected_column_id`] = undefined;
@@ -365,6 +370,21 @@ export class Variables {
             this.instance.connectedColumn = columnIdx
             this.newVariables[`connected_column`] = columnIdx+1;
             this.newVariables[`connected_column_id`] = column.id;
+        }
+    }
+
+    private readonly connectedClip = (layerIdx: number, clipIdx: number): (value: number) => void  => {
+        return (connected) => {
+            if (connected < 3) {
+                if (this.instance.connectedClips[layerIdx] === clipIdx) {
+                    this.instance.connectedClips[layerIdx] = null;
+                    this.instance.checkFeedbacksById(...this.instance.connectedClipFeedbacks)
+                }
+                return;
+            }
+
+            this.instance.connectedClips[layerIdx] = clipIdx;
+            this.instance.checkFeedbacksById(...this.instance.connectedClipFeedbacks)
         }
     }
 
@@ -452,8 +472,15 @@ export class Variables {
         const idxStr = (index + 1).toString();
         const clipIdxStr = (clipIndex + 1).toString();
         if (clip.connected?.index === 0) {
+            variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_id`, name: `Layer ${idxStr} Clip ${clipIdxStr} ID`, initial: clip.id, ignore: true})
             // @ts-ignore
-            variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_selected`, name: `Layer ${idxStr} Clip ${clipIdxStr} Selected`, parameter: clip.selected.id as number, callback: this.selectedClip(index, clipIndex), ignore: true });
+            variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_name`, name: `Layer ${idxStr} Clip ${clipIdxStr} Name`, source: clip.name, ignore: true})
+            // @ts-ignore
+            variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_selected`, name: `Layer ${idxStr} Clip ${clipIdxStr} Selected`, source: clip.selected, callback: this.selectedClip(index, clipIndex), ignore: true})
+            // @ts-ignore
+            variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_connected`, name: `Layer ${idxStr} Clip ${clipIdxStr} Connected`, source: clip.connected, callback: this.connectedClip(index, clipIndex), ignore: true })
+            // @ts-ignore
+            // variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_ignorecolumntrigger`, name: `Layer ${idxStr} Clip ${clipIdxStr} Ignore Column Trigger`, source: clip.ignorecolumntrigger})
             return;
         }
         variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_id`, name: `Layer ${idxStr} Clip ${clipIdxStr} ID`, initial: clip.id })
@@ -462,14 +489,14 @@ export class Variables {
         // @ts-ignore
         variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_selected`, name: `Layer ${idxStr} Clip ${clipIdxStr} Selected`, source: clip.selected, callback: this.selectedClip(index, clipIndex) })
         // @ts-ignore
-        variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_connected`, name: `Layer ${idxStr} Clip ${clipIdxStr} Connected`, source: clip.connected })
+        variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_connected`, name: `Layer ${idxStr} Clip ${clipIdxStr} Connected`, source: clip.connected, callback: this.connectedClip(index, clipIndex) })
         // @ts-ignore
         variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_ignorecolumntrigger`, name: `Layer ${idxStr} Clip ${clipIdxStr} Ignore Column Trigger`, source: clip.ignorecolumntrigger})
         if (clip.transport?.position) {
             // @ts-ignore
             variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_transport_position`, name: `Layer ${idxStr} Clip ${clipIdxStr} Play Head`, source: clip.transport.position })
             // @ts-ignore
-            variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_transport_position_time`, name: `Layer ${idxStr} Clip ${clipIdxStr} Play Head (time)`, source: clip.transport.position, useFormat: (value: number) => {return msToTime(value)}})
+            variables.push({ variableId: `layer_${idxStr}_clip_${clipIdxStr}_transport_position_time`, name: `Layer ${idxStr} Clip ${clipIdxStr} Play Head (time)`, source: clip.transport.position, useFormat: msToTime })
         }
         if (clip.transport?.controls) {
             // @ts-ignore
